@@ -159,13 +159,12 @@ void calcula_coeficiente_variacao(double *media,double *dp,double *cv, int col)
 }
 
 int main(int argc,char **argv){
-    int lin,col,i,j; //Define as variáveis de índices e dimensões
+    int lin,col; //Define as variáveis de índices e dimensões
     double *matriz,*mediana,*media,*media_har,*moda,*variancia,*dp,*cv; //Define a matriz (forma linear), vetores de medidas estatísticas
     double *matriz_column_major;
     
     fscanf(stdin, "%d ", &lin); //Lê a quantidade de linhas da matriz
     fscanf(stdin, "%d\n", &col); //Lê a quantidade de colunas da matriz
-    matriz=(double *)malloc(lin*col * sizeof(double)); //Aloca a matriz
     matriz_column_major=(double *)malloc(lin*col * sizeof(double)); //Aloca a matriz
     media=(double *)malloc(col * sizeof(double)); //Aloca o vetor de media
     media_har=(double *)malloc(col * sizeof(double)); //Aloca o vetor de media harmônica
@@ -177,30 +176,15 @@ int main(int argc,char **argv){
     
     
     double time_read = omp_get_wtime();
-    {
-        for(i=0;i<lin;i++){
-            for(j=0;j<col;j++){
-                double read;
-                fscanf(stdin, "%lf ",&(read)); //Lê a matriz
-                matriz[i*col + j] = read;
-            }
-            {
-                for(j = 0; j < col; j++)
-                    matriz_column_major[j*lin+i] = matriz[i*col + j];
-            }
-            
+    for(int i=0;i<lin;i++){
+        for(int j=0;j<col;j++){
+            double read;
+            fscanf(stdin, "%lf ",&(read)); //Lê a matriz
+            matriz_column_major[j*lin+i] = read;
         }
     }
     time_read = omp_get_wtime() - time_read;
     
-    // print matrix to verify correct input
-    // for(i=0;i<lin;i++){
-    //     for(j=0;j<col;j++){
-    //         printf("%lf ", matriz[i*col+j]);
-    //     }
-    //     printf("\n");
-    // }
-
     // printf("##### \n");
     
     // for(i=0;i<lin;i++){
@@ -259,30 +243,31 @@ int main(int argc,char **argv){
     
     
     
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
         printf("%.1lf ",media[i]);
     printf("\n");
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
         printf("%.1lf ",media_har[i]);
     printf("\n");
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
        printf("%.1lf ",mediana[i]);
     printf("\n");
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
        printf("%.1lf ",moda[i]);
     printf("\n");
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
         printf("%.1lf ",variancia[i]);
     printf("\n");
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
         printf("%.1lf ",dp[i]);
     printf("\n");
-    for(i=0;i<col;i++)
+    for(int i = 0; i < col; i++)
         printf("%.1lf ",cv[i]);
 
 
     
     free(matriz); //Desaloca a matriz
+    free(matriz_column_major); //Desaloca a matriz
     free(media); //Desaloca o vetor de media
     free(media_har); //Desaloca o vetor de media_har
     free(mediana); //Desaloca vetor de mediana
@@ -302,7 +287,7 @@ int main(int argc,char **argv){
     fprintf(stderr, "Time taken to calculate mode: %lf seconds\n", time_mode);
     fprintf(stderr, "Time taken to calculate median: %lf seconds\n", time_median);
     fprintf(stderr, "Time taken to calculate variance: %lf seconds\n", time_variance);
-    // fprintf(stderr, "Time taken to calculate standard deviation: %lf seconds\n", time_stddev);
-    // fprintf(stderr, "Time taken to calculate coefficient of variation: %lf seconds\n", time_cv);
+    fprintf(stderr, "Time taken to calculate standard deviation: %lf seconds\n", time_stddev);
+    fprintf(stderr, "Time taken to calculate coefficient of variation: %lf seconds\n", time_cv);
 
 }
