@@ -199,7 +199,6 @@ int main(int argc, char **argv)
 
 	srand(seed);	// setting starting point to rand();
     int *matrix = (int *)malloc(tam * tam * sizeof(int));
-    #pragma omp parallel for
     for(int i=0;i<tam;i++)
 	{
         for(int j=0;j<tam;j++)
