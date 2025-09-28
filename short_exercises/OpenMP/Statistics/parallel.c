@@ -55,119 +55,93 @@ void quicksort(double *arr, int low, int high, int C){
    of pivot 
    https://www.geeksforgeeks.org/quick-sort/
 */
-void ordena_colunas(double *matriz, int lin, int col) {
+void ordena_colunas_cm(double *matriz, int lin, int col) {
   int j;
   
+  #pragma omp parallel for
   for (j = 0; j < col; j++) {
       //manda o endereco do primeiro elemento da coluna, limites inf e sup e a largura da matriz
-      quicksort(&matriz[j], 0, lin-1, col);
+      quicksort(&matriz[j*lin], 0, lin-1, 1);
   }
-} 
-void calcula_media(double *matriz, double *vet, int lin, int col){
+}
+
+void calcula_media_cm(double *matriz_cm, double *vet, int lin, int col){
     int i,j;
     double soma;
-    for(i=0;i<col;i++){
-        soma=0;
-        for(j=0;j<lin;j++){
-            soma+=matriz[j*col+i];
+
+    // #pragma omp parallel for
+    for(j = 0; j < col; j++){
+        soma = 0;
+        // #pragma omp parallel simd reduction(+=:soma)
+        for(i = 0; i < lin; i++){
+            soma+=matriz_cm[j*lin + i];
         }
-        vet[i]=soma/j; 
-    }   
+        vet[j]=soma/lin; 
+    }
 }
-void calcula_media_harmonica(double *matriz, double *vet, int lin, int col){
-    int i,j;
-    double soma;
-    for(i=0;i<col;i++){
-        soma=0;
-        for(j=0;j<lin;j++){
-            soma+=(1/(matriz[j*col+i]));
+
+void calcula_media_harmonica_cm(double *matriz_cm, double *vet, int lin, int col){
+    for(int j = 0; j < col; j++){
+        double soma = 0;
+        
+        for(int i = 0; i < lin; i++){
+            soma += (1 / (matriz_cm[j*lin + i]));
         }
-        vet[i]=lin/soma; 
-    }   
+
+        vet[j] = lin/soma;
+    }
 }
-void calcula_mediana(double *matriz, double *vet, int lin, int col) {  
-  int j;
-  for (j = 0; j < col; j++) {
-    vet[j] = matriz[((lin/2)*col)+j];
-    if(!(lin%2))  {
-      vet[j]+=matriz[((((lin-1)/2)*col)+j)];
-      vet[j]*=0.5;
-    } 
-  } 
-} 
+
+void calcula_mediana_cm(double *matriz, double *vet, int lin, int col) {
+    for(int j = 0; j < col; j++){
+        vet[j] = matriz[j * lin + (lin/2)];
+        if(!(lin%2))  {
+            vet[j]+=matriz[j * lin + ((lin - 1)/2)];
+            vet[j]*=0.5;
+        } 
+    }
+}
+
 //Adaptado de https://www.clubedohardware.com.br/forums/topic/1291570-programa-em-c-que-calcula-moda-media-e-mediana/
-double moda_aux(double *matriz,int lin){
-    int i, j; 
-    int *frequencyCounts;
-    frequencyCounts=(int*)calloc(lin, sizeof(int));
+void calcula_moda_cm(double *matriz, double *moda, int lin, int col){
+    for(int j = 0; j < col; j++){
+        int frequencyCounter = 0;
+        int maxFrequency = 0;
+        float moda_local;
 
-    int frequencyCounter = 0;
-    int maxFrequency = 0;
+        for(int i = 0; i < lin - 1; i++){
+            if(matriz[j * lin + i] == matriz[j * lin + i + 1]){
+                frequencyCounter++;
+            }
+            else{
+                if(frequencyCounter > maxFrequency){
+                    maxFrequency = frequencyCounter;
+                    moda_local = matriz[j * lin + i];
+                }
 
-    float moda;
+                frequencyCounter = 0;
+            }
 
-    // for(i=0;i<lin;i++){
-    //     printf("Value: %lf\n", matriz[i]);
-    //     for(j=i+1;j<lin;j++){
-    //         if(matriz[i]==matriz[j]){
-    //             frequencyCounts[i]++;
-    //             if(frequencyCounts[i]>maxFrequency){
-    //                 maxFrequency=frequencyCounts[i];
-    //                 moda=matriz[i];
-    //             }
-    //         }
-    //     }
-    //     frequencyCounts[i]=0;
-    // }
-    
-    for(i=0;i<lin - 1;i++){
-        if(matriz[i] == matriz[i + 1]){
-            frequencyCounter++;
+        }
+        if(maxFrequency == 0){
+            moda[j] = -1;
         }
         else{
-            frequencyCounter = 0;
+            moda[j] = moda_local;
         }
-
-        if(frequencyCounter > maxFrequency){
-            maxFrequency = frequencyCounter;
-            moda = matriz[i];
-        }
-    }
-    
-    free(frequencyCounts);
-
-    if(maxFrequency == 0){
-        return -1;
-    }
-    else{
-        return moda;
     }
 }
 
-void calcula_moda(double *matriz,double *moda,int lin, int col){
-    int i,j;
-    double *aux=(double *)malloc(lin*sizeof(double));
-    for(i=0;i<col;i++){
-        for(j=0;j<lin;j++)
-        {
-            aux[j]=matriz[j*col+i]; //Faz a transposta da linha para coluna
+void calcula_variancia_cm(double *matriz, double *media,double *variancia, int lin, int col){
+    for(int j = 0; j < col; j++){
+        double soma = 0;
+        for(int i = 0; i < lin; i++){
+            soma += pow((matriz[j * lin + i] - media[j]), 2);
         }
-        moda[i]=moda_aux(aux,lin);
+        variancia[j]=soma/(lin-1); 
     }
-    free(aux);
 }
-void calcula_variancia(double *matriz, double *media,double *variancia, int lin, int col)
-{
-    int i,j;
-    double soma;
-    for(i=0;i<col;i++){
-        soma=0;
-        for(j=0;j<lin;j++){
-            soma+=pow((matriz[j*col+i]-media[i]),2);
-        }
-        variancia[i]=soma/(lin-1); 
-    } 
-}
+
 void calcula_desvio_padrao(double *variancia,double *dp, int col)
 {
     int i;
@@ -175,6 +149,7 @@ void calcula_desvio_padrao(double *variancia,double *dp, int col)
         dp[i]=sqrt(variancia[i]);
     }  
 }
+
 void calcula_coeficiente_variacao(double *media,double *dp,double *cv, int col)
 {
     int i;
@@ -182,12 +157,16 @@ void calcula_coeficiente_variacao(double *media,double *dp,double *cv, int col)
         cv[i]=dp[i]/media[i];
     }  
 }
+
 int main(int argc,char **argv){
     int lin,col,i,j; //Define as variáveis de índices e dimensões
     double *matriz,*mediana,*media,*media_har,*moda,*variancia,*dp,*cv; //Define a matriz (forma linear), vetores de medidas estatísticas
+    double *matriz_column_major;
+    
     fscanf(stdin, "%d ", &lin); //Lê a quantidade de linhas da matriz
     fscanf(stdin, "%d\n", &col); //Lê a quantidade de colunas da matriz
     matriz=(double *)malloc(lin*col * sizeof(double)); //Aloca a matriz
+    matriz_column_major=(double *)malloc(lin*col * sizeof(double)); //Aloca a matriz
     media=(double *)malloc(col * sizeof(double)); //Aloca o vetor de media
     media_har=(double *)malloc(col * sizeof(double)); //Aloca o vetor de media harmônica
     mediana=(double *)malloc(col * sizeof(double)); //Aloca o vetor de mediana
@@ -198,35 +177,75 @@ int main(int argc,char **argv){
     
     
     double time_read = omp_get_wtime();
-    for(i=0;i<lin;i++){
-        for(j=0;j<col;j++){
-            fscanf(stdin, "%lf ",&(matriz[i*col+j])); //Lê a matriz
+    {
+        for(i=0;i<lin;i++){
+            for(j=0;j<col;j++){
+                double read;
+                fscanf(stdin, "%lf ",&(read)); //Lê a matriz
+                matriz[i*col + j] = read;
+            }
+            {
+                for(j = 0; j < col; j++)
+                    matriz_column_major[j*lin+i] = matriz[i*col + j];
+            }
+            
         }
     }
     time_read = omp_get_wtime() - time_read;
     
+    // print matrix to verify correct input
+    // for(i=0;i<lin;i++){
+    //     for(j=0;j<col;j++){
+    //         printf("%lf ", matriz[i*col+j]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // printf("##### \n");
+    
+    // for(i=0;i<lin;i++){
+    //     for(j=0;j<col;j++){
+    //         printf("%lf ", matriz_column_major[j*lin+i]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // printf("##### \n");
+
+
     double time_avg = omp_get_wtime();
-    calcula_media(matriz,media,lin,col);
+    calcula_media_cm(matriz_column_major, media, lin, col);
     time_avg = omp_get_wtime() - time_avg;
     
     double time_harmonic = omp_get_wtime();
-    calcula_media_harmonica(matriz,media_har,lin,col);
+    calcula_media_harmonica_cm(matriz_column_major, media_har, lin, col);
     time_harmonic = omp_get_wtime() - time_harmonic;
-
-    double time_sort = omp_get_wtime();
-    ordena_colunas(matriz,lin,col);
-    time_sort = omp_get_wtime() - time_sort;
     
+    double time_sort_cm = omp_get_wtime();
+    ordena_colunas_cm(matriz_column_major,lin,col);
+    time_sort_cm = omp_get_wtime() - time_sort_cm;
+    
+    // printf("##### \n");
+    
+    // for(i=0;i<lin;i++){
+    //     for(j=0;j<col;j++){
+    //         printf("%lf ", matriz_column_major[j*lin+i]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // printf("##### \n");
+
     double time_median = omp_get_wtime();
-    calcula_mediana(matriz,mediana,lin,col);
+    calcula_mediana_cm(matriz_column_major,mediana,lin,col);
     time_median = omp_get_wtime() - time_median;
     
     double time_mode = omp_get_wtime();
-    calcula_moda(matriz,moda,lin,col);
+    calcula_moda_cm(matriz_column_major, moda, lin, col);
     time_mode = omp_get_wtime() - time_mode;
     
     double time_variance = omp_get_wtime();
-    calcula_variancia(matriz,media,variancia,lin,col);
+    calcula_variancia_cm(matriz_column_major,media,variancia,lin,col);
     time_variance = omp_get_wtime() - time_variance;
     
     double time_stddev = omp_get_wtime();
@@ -279,11 +298,11 @@ int main(int argc,char **argv){
     fprintf(stderr, "Time taken to read input: %lf seconds\n", time_read);
     fprintf(stderr, "Time taken to calculate average: %lf seconds\n", time_avg);
     fprintf(stderr, "Time taken to calculate harmonic mean: %lf seconds\n", time_harmonic);
-    fprintf(stderr, "Time taken to sort columns: %lf seconds\n", time_sort);
-    fprintf(stderr, "Time taken to calculate median: %lf seconds\n", time_median);
+    fprintf(stderr, "Time taken to sort columns (column major): %lf seconds\n", time_sort_cm);
     fprintf(stderr, "Time taken to calculate mode: %lf seconds\n", time_mode);
+    fprintf(stderr, "Time taken to calculate median: %lf seconds\n", time_median);
     fprintf(stderr, "Time taken to calculate variance: %lf seconds\n", time_variance);
-    fprintf(stderr, "Time taken to calculate standard deviation: %lf seconds\n", time_stddev);
-    fprintf(stderr, "Time taken to calculate coefficient of variation: %lf seconds\n", time_cv);
+    // fprintf(stderr, "Time taken to calculate standard deviation: %lf seconds\n", time_stddev);
+    // fprintf(stderr, "Time taken to calculate coefficient of variation: %lf seconds\n", time_cv);
 
 }
