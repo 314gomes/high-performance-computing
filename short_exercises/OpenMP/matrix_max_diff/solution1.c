@@ -71,7 +71,7 @@ void get_max_diff(int *vec1, int *vec2, int *diff_vec, int size, int *max_value,
 // max diff of each row in a "max diff for each row" vector.
 // I'm chosing the second option as it uses considerably less space and I suspect
 // it is not going to have a huge impact on performance
-void gmd_rows_with_offset(int *mat, int size, int off, int *max_value, int *min_value, int *max_diff){
+void gmd_rows_with_offset(int **mat, int size, int off, int *max_value, int *min_value, int *max_diff){
     int *row_max_diff = malloc(sizeof(int) * (size - 1));
     int *row_max_value = malloc(sizeof(int) * (size - 1));
     int *row_min_value = malloc(sizeof(int) * (size - 1));
@@ -83,14 +83,14 @@ void gmd_rows_with_offset(int *mat, int size, int off, int *max_value, int *min_
         
         if(off >= 1){
             get_diff_vector(
-                mat + (j * size),
-                mat + ((j + 1) * size + off),
+                mat[j],
+                mat[j + 1] + off,
                 diff, size - abs(off)
             );
             
             get_max_diff(
-                mat + (j * size),
-                mat + ((j + 1) * size + off) ,
+                mat[j],
+                mat[j + 1] + off,
                 diff, size - abs(off),
                 row_max_value + j,
                 row_min_value + j,
@@ -100,14 +100,14 @@ void gmd_rows_with_offset(int *mat, int size, int off, int *max_value, int *min_
 
         else{
             get_diff_vector(
-                mat + (j * size - off),
-                mat + ((j + 1) * size),
+                mat[j]  - off,
+                mat[j + 1],
                 diff, size - abs(off)
             );
             
             get_max_diff(
-                mat + (j * size - off),
-                mat + ((j + 1) * size) ,
+                mat[j]- off,
+                mat[j + 1],
                 diff, size - abs(off),
                 row_max_value + j,
                 row_min_value + j,
@@ -129,18 +129,18 @@ void gmd_rows_with_offset(int *mat, int size, int off, int *max_value, int *min_
 
 }
 
-void transpose_mat(int *mat, int size){
+void transpose_mat(int **mat, int size){
     #pragma omp parallel for
     for(int i = 0; i < size; i ++){
         for(int j = 0; j < i; j ++){
-            int aux = mat[i * size + j];
-            mat[i * size + j] = mat[j * size + i];
-            mat[j * size + i] = aux;
+            int aux = mat[i][j];
+            mat[i][j] = mat[j][i];
+            mat[j][i] = aux;
         }
     }
 }
 
-void gmd_mat(int *mat, int size, int *max_value, int *min_value, int *max_diff){
+void gmd_mat(int **mat, int size, int *max_value, int *min_value, int *max_diff){
     int max_values[4];
     int min_values[4];
     int diffs[4];
@@ -198,13 +198,14 @@ int main(int argc, char **argv)
     wtime = omp_get_wtime();
 
 	srand(seed);	// setting starting point to rand();
-    int *matrix = (int *)malloc(tam * tam * sizeof(int));
+    int **matrix = (int **)malloc(tam * sizeof(int *)); // alocar espaço para ponteiro de cada linha
     for(int i=0;i<tam;i++)
 	{
+        matrix[i] = (int *) malloc(tam * sizeof(int)); // alocar a linha
         for(int j=0;j<tam;j++)
 		{
             // store matrix in row-major order
-            matrix[i * tam + j] = rand() % 100;;
+            matrix[i][j] = rand() % 100;;
         }
     }
 
@@ -214,8 +215,8 @@ int main(int argc, char **argv)
 	// matriz[0][2] = 0;
 	// matriz[1][1] = 99;
 
-    matrix[0 * tam + 2] = 0;
-    matrix[1 * tam + 1] = 101;
+    matrix[0][2] = 0;
+    matrix[1][1] = 101;
 
 
     // printf("Matrix is:\n");
