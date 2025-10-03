@@ -4,6 +4,7 @@
 #include <math.h>
 #include <string.h>
 #include <omp.h>
+#include <immintrin.h>
 
 void print_vector(int *vec, int size){
     for(int j=0;j<size;j++)
@@ -14,14 +15,14 @@ void print_vector(int *vec, int size){
     printf("\n");
 }
 
-void print_matrix(int *mat, int r, int c){
+void print_matrix(int **mat, int r, int c){
     for(int i=0;i<r;i++)
 	{
-        print_vector(mat + (i * c), c);
+        print_vector(mat[i], c);
     }
 }
 
-void print_square_matrix(int *mat, int size){
+void print_square_matrix(int **mat, int size){
     print_matrix(mat, size, size);
 }
 
@@ -129,7 +130,8 @@ void gmd_rows_with_offset(int **mat, int size, int off, int *max_value, int *min
 
 }
 
-void transpose_mat(int **mat, int size){
+
+void transpose_mat_old(int **mat, int size){
     #pragma omp parallel for
     for(int i = 0; i < size; i ++){
         for(int j = 0; j < i; j ++){
@@ -137,6 +139,91 @@ void transpose_mat(int **mat, int size){
             mat[i][j] = mat[j][i];
             mat[j][i] = aux;
         }
+    }
+}
+
+// Inspired from https://stackoverflow.com/a/16743203/20619087
+// the sse implementation ended up being faster than the avx2 one
+void transpose_mat_sse(int **mat, int size){
+    #pragma omp parallel loop
+    for(int i = 0; i < size; i += 4){
+        __m128i row0j;
+        __m128i row1j;
+        __m128i row2j;
+        __m128i row3j;
+        
+        __m128i rowj0;
+        __m128i rowj1;
+        __m128i rowj2;
+        __m128i rowj3;
+        
+        __m128i tmp0;
+        __m128i tmp1;
+        __m128i tmp2;
+        __m128i tmp3;
+        
+        for(int j = 0; j < i; j += 4){
+            row0j = _mm_load_si128((const __m128i*) (&mat[i + 0][j]));
+            row1j = _mm_load_si128((const __m128i*) (&mat[i + 1][j]));
+            row2j = _mm_load_si128((const __m128i*) (&mat[i + 2][j]));
+            row3j = _mm_load_si128((const __m128i*) (&mat[i + 3][j]));
+            
+            tmp0 = _mm_unpacklo_epi32(row0j, row1j);
+            tmp1 = _mm_unpackhi_epi32(row0j, row1j);
+            tmp2 = _mm_unpacklo_epi32(row2j, row3j);
+            tmp3 = _mm_unpackhi_epi32(row2j, row3j);
+            
+            row0j = _mm_castps_si128(_mm_movelh_ps(_mm_castsi128_ps(tmp0), _mm_castsi128_ps(tmp2)));
+            row1j = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp2), _mm_castsi128_ps(tmp0)));
+            row2j = _mm_castps_si128(_mm_movelh_ps(_mm_castsi128_ps(tmp1), _mm_castsi128_ps(tmp3)));
+            row3j = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp3), _mm_castsi128_ps(tmp1)));
+            
+            rowj0 = _mm_load_si128((const __m128i*) (&mat[j + 0][i]));
+            rowj1 = _mm_load_si128((const __m128i*) (&mat[j + 1][i]));
+            rowj2 = _mm_load_si128((const __m128i*) (&mat[j + 2][i]));
+            rowj3 = _mm_load_si128((const __m128i*) (&mat[j + 3][i]));
+            
+            _mm_store_si128((__m128i*) (&mat[j + 0][i]), row0j);
+            _mm_store_si128((__m128i*) (&mat[j + 1][i]), row1j);
+            _mm_store_si128((__m128i*) (&mat[j + 2][i]), row2j);
+            _mm_store_si128((__m128i*) (&mat[j + 3][i]), row3j);
+                        
+            tmp0 = _mm_unpacklo_epi32(rowj0, rowj1);
+            tmp1 = _mm_unpackhi_epi32(rowj0, rowj1);
+            tmp2 = _mm_unpacklo_epi32(rowj2, rowj3);
+            tmp3 = _mm_unpackhi_epi32(rowj2, rowj3);
+            
+            rowj0 = _mm_castps_si128(_mm_movelh_ps(_mm_castsi128_ps(tmp0), _mm_castsi128_ps(tmp2)));
+            rowj1 = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp2), _mm_castsi128_ps(tmp0)));
+            rowj2 = _mm_castps_si128(_mm_movelh_ps(_mm_castsi128_ps(tmp1), _mm_castsi128_ps(tmp3)));
+            rowj3 = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp3), _mm_castsi128_ps(tmp1)));
+
+            _mm_store_si128((__m128i*) (&mat[i + 0][j]), rowj0);
+            _mm_store_si128((__m128i*) (&mat[i + 1][j]), rowj1);
+            _mm_store_si128((__m128i*) (&mat[i + 2][j]), rowj2);
+            _mm_store_si128((__m128i*) (&mat[i + 3][j]), rowj3);
+
+        }
+
+        row0j = _mm_load_si128((const __m128i*) (&mat[i + 0][i]));
+        row1j = _mm_load_si128((const __m128i*) (&mat[i + 1][i]));
+        row2j = _mm_load_si128((const __m128i*) (&mat[i + 2][i]));
+        row3j = _mm_load_si128((const __m128i*) (&mat[i + 3][i]));
+
+        tmp0 = _mm_unpacklo_epi32(row0j, row1j);
+        tmp1 = _mm_unpackhi_epi32(row0j, row1j);
+        tmp2 = _mm_unpacklo_epi32(row2j, row3j);
+        tmp3 = _mm_unpackhi_epi32(row2j, row3j);
+
+        row0j = _mm_castps_si128(_mm_movelh_ps(_mm_castsi128_ps(tmp0), _mm_castsi128_ps(tmp2)));
+        row1j = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp2), _mm_castsi128_ps(tmp0)));
+        row2j = _mm_castps_si128(_mm_movelh_ps(_mm_castsi128_ps(tmp1), _mm_castsi128_ps(tmp3)));
+        row3j = _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(tmp3), _mm_castsi128_ps(tmp1)));
+
+        _mm_store_si128((__m128i*) (&mat[i + 0][i]), row0j);
+        _mm_store_si128((__m128i*) (&mat[i + 1][i]), row1j);
+        _mm_store_si128((__m128i*) (&mat[i + 2][i]), row2j);
+        _mm_store_si128((__m128i*) (&mat[i + 3][i]), row3j);
     }
 }
 
@@ -152,8 +239,10 @@ void gmd_mat(int **mat, int size, int *max_value, int *min_value, int *max_diff)
     
     // printf("Matrix is:\n");
     // print_square_matrix(mat, size); 
-    transpose_mat(mat, size);
-    // printf("Matrix is:\n");
+    // transpose_mat_old(mat, size);
+    transpose_mat_sse(mat, size);
+
+    // printf("Transpose is:\n");
     // print_square_matrix(mat, size); 
 
     gmd_rows_with_offset(mat, size, 0, &max_values[3], &min_values[3], &diffs[3]);    
@@ -201,11 +290,12 @@ int main(int argc, char **argv)
     int **matrix = (int **)malloc(tam * sizeof(int *)); // alocar espaço para ponteiro de cada linha
     for(int i=0;i<tam;i++)
 	{
-        matrix[i] = (int *) malloc(tam * sizeof(int)); // alocar a linha
+        matrix[i] = (int *) _mm_malloc(tam * sizeof(int), 16); // alocar a linha
         for(int j=0;j<tam;j++)
 		{
             // store matrix in row-major order
             matrix[i][j] = rand() % 100;;
+            // matrix[i][j] = i * 10 + j;
         }
     }
 
@@ -215,8 +305,8 @@ int main(int argc, char **argv)
 	// matriz[0][2] = 0;
 	// matriz[1][1] = 99;
 
-    matrix[0][2] = 0;
-    matrix[1][1] = 101;
+    // matrix[0][2] = 0;
+    // matrix[1][1] = 101;
 
 
     // printf("Matrix is:\n");
