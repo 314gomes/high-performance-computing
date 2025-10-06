@@ -132,7 +132,7 @@ void gmd_rows_with_offset(int **mat, int size, int off, int *max_value, int *min
 
 
 void transpose_mat_old(int **mat, int size){
-    #pragma omp parallel for
+    #pragma omp parallel for shared(mat) schedule(dynamic, 1)
     for(int i = 0; i < size; i ++){
         for(int j = 0; j < i; j ++){
             int aux = mat[i][j];
@@ -145,7 +145,7 @@ void transpose_mat_old(int **mat, int size){
 // Inspired from https://stackoverflow.com/a/16743203/20619087
 // the sse implementation ended up being faster than the avx2 one
 void transpose_mat_sse(int **mat, int size){
-    #pragma omp parallel loop
+    #pragma omp parallel for shared(mat) schedule(dynamic, 1)
     for(int i = 0; i < size; i += 4){
         __m128i row0j;
         __m128i row1j;
@@ -161,7 +161,6 @@ void transpose_mat_sse(int **mat, int size){
         __m128i tmp1;
         __m128i tmp2;
         __m128i tmp3;
-        
         for(int j = 0; j < i; j += 4){
             row0j = _mm_load_si128((const __m128i*) (&mat[i + 0][j]));
             row1j = _mm_load_si128((const __m128i*) (&mat[i + 1][j]));
@@ -305,8 +304,8 @@ int main(int argc, char **argv)
 	// matriz[0][2] = 0;
 	// matriz[1][1] = 99;
 
-    // matrix[0][2] = 0;
-    // matrix[1][1] = 101;
+    matrix[0][2] = 0;
+    matrix[1][1] = 101;
 
 
     // printf("Matrix is:\n");
