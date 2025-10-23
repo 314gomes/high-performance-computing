@@ -55,7 +55,7 @@ int main() {
 	{
 		long int local_count = 0;
 		// 1. cada thread terá seu próprio estado de números aleatorios
-		static uint64_t s[4];
+		uint64_t s[4];
 		
 		// 2. CADA thread inicializa (semeia) seu estado de números aleatórios
 		int thread_id = omp_get_thread_num();
