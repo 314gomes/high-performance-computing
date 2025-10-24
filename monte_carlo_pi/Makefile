@@ -31,7 +31,7 @@ vector_opts: $(foreach opt,$(VECTOR_OPTS),$(foreach level,$(VECTOR_OPT_LEVELS),b
 
 # Pattern rules for vector instructions (replaces individual rules)
 better_omp_xoshiro256++_unroll_-O0%: better_omp_xoshiro256++_unroll.c
-	$(CC) $(CFLAGS) -O0 -ftree-vectorize $* $< -o $@
+	$(CC) $(CFLAGS) -O0 $* $< -o $@
 
 better_omp_xoshiro256++_unroll_-O%-msse: better_omp_xoshiro256++_unroll.c
 	$(CC) $(CFLAGS) -O$* -msse $< -o $@
