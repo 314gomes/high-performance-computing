@@ -8,16 +8,12 @@ Compilar: gcc trivial_omp.c -o trivial_omp -fopenmp
 #include <omp.h>
 #include <time.h>
 
-#define T 8 //Define o nr de threads a usar
-
 int main() {
 	long int n;
 	long int count = 0;
 	double start, end, wall_clock_time;
 	printf("\nn = ");
 	scanf("%ld", &n);
-	// Define o número de threads a serem usadas
-	omp_set_num_threads(T);
 	// Inicia a medição de tempo
 	start = omp_get_wtime();
 	// Inicia a região paralela

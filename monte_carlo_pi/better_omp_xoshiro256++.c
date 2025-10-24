@@ -9,15 +9,13 @@
 #include <stdint.h>
 
 
-#define T 8 //Define o nr de threads a usar
-
 // função para rotacionar bits
 static __inline uint64_t rotl(const uint64_t x, int k) {
 	return (x << k) | (x >> (64 - k));
 }
 
 // função para gerar o próximo número pseudo aleatório
-static __inline uint64_t next(uint64_t s[4]) {
+static uint64_t next(uint64_t s[4]) {
 	const uint64_t result = rotl(s[0] + s[3], 23) + s[0];
 
 	const uint64_t t = s[1] << 17;
@@ -45,8 +43,6 @@ int main() {
 	double start, end, wall_clock_time;
 	printf("\nn = ");
 	scanf("%ld", &n);
-	// Define o número de threads a serem usadas
-	omp_set_num_threads(T);
 	// Inicia a medição de tempo
 	start = omp_get_wtime();
 
