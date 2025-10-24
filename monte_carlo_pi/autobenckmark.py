@@ -17,13 +17,14 @@ N_TIMES_RUN: int = 5
 N_THREADS = [1, 2, 4, 8]
 
 # --- Parâmetros para 'n' ---
-N_MIN: int =     10_000_000
+N_MIN: int = 10_000
 N_MAX: int = 10_000_000_000
+
 N_STEP: int = 100
 
 
 # Timeout em segundos para cada execução
-RUN_TIMEOUT: float = 600
+RUN_TIMEOUT: int = 600
 
 def get_binary_info(binary_path: str) -> Dict[str, str]:
     """Extract optimization and SIMD information from binary name."""
@@ -140,6 +141,20 @@ def run_benchmark():
 
                         except subprocess.TimeoutExpired:
                             print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (timeout de {RUN_TIMEOUT}s atingido)")
+                            # Write timeout to CSV with standardized format
+                            with open(OUTPUT_CSV, 'a', newline='', encoding='utf-8') as f:
+                                writer = csv.writer(f)
+                                writer.writerow([
+                                    binary_path,
+                                    binary_info['base_name'],
+                                    binary_info['opt_level'],
+                                    binary_info['simd'],
+                                    n,
+                                    thread_count,
+                                    run,
+                                    f"TIMEOUT_{RUN_TIMEOUT}s"  # More concise and standard format
+                                ])
+                                f.flush()
                         except Exception as e:
                             print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (exceção: {e})")
 
