@@ -11,15 +11,17 @@ from typing import List, Dict
 OUTPUT_CSV: str = 'benchmark_results.csv'
 
 # Número de vezes para executar cada combinação de binário/thread
-N_TIMES_RUN: int = 10
+N_TIMES_RUN: int = 5
 
-# Número máximo de threads para testar (vai de 1 até MAX_THREADS)
+# Número máximo de threads para testar 
 MAX_THREADS: int = 16
+STEP_THREADS: int = 1
 
 # --- Parâmetros para 'n' ---
-N_MIN: int = 1_000_000_000
-N_MAX: int = 1_000_000_000
-N_STEP: int = N_MIN
+N_MIN: int = 1_000_000
+N_MAX: int = 10_000_000_000
+N_STEP: int = 10
+
 
 # Timeout em segundos para cada execução
 RUN_TIMEOUT: float = 600
@@ -83,11 +85,13 @@ def run_benchmark():
                 print(f"    Otimização: {binary_info['opt_level']}")
                 print(f"    SIMD: {binary_info['simd']}")
                 
-                for n in range(N_MIN, N_MAX + 1, N_STEP):
+                # Replace linear range with exponential progression
+                n = N_MIN
+                while n <= N_MAX:
                     print(f"  Testando com n = {n:,}...")
                     input_data = f"{n}\n"
                 
-                    for thread_count in range(1, MAX_THREADS + 1):
+                    for thread_count in range(1, MAX_THREADS + 1, STEP_THREADS):
                         print(f"    Testando com {thread_count} thread(s)...")
                         
                         for run in range(1, N_TIMES_RUN + 1):
@@ -133,6 +137,8 @@ def run_benchmark():
                                 print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (timeout de {RUN_TIMEOUT}s atingido)")
                             except Exception as e:
                                 print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (exceção: {e})")
+
+                    n *= N_STEP  # Multiply by step instead of adding
 
     except IOError as e:
         print(f"Erro fatal ao escrever o arquivo CSV: {e}")
