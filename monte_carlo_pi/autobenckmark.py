@@ -14,13 +14,12 @@ OUTPUT_CSV: str = 'benchmark_results.csv'
 N_TIMES_RUN: int = 5
 
 # Número máximo de threads para testar 
-MAX_THREADS: int = 16
-STEP_THREADS: int = 1
+N_THREADS = [1, 2, 4, 8]
 
 # --- Parâmetros para 'n' ---
-N_MIN: int = 1_000_000
+N_MIN: int =     10_000_000
 N_MAX: int = 10_000_000_000
-N_STEP: int = 10
+N_STEP: int = 100
 
 
 # Timeout em segundos para cada execução
@@ -93,7 +92,7 @@ def run_benchmark():
                 print(f"  Testando com n = {n:,}...")
                 input_data = f"{n}\n"
             
-                for thread_count in range(1, MAX_THREADS + 1, STEP_THREADS):
+                for thread_count in N_THREADS:
                     print(f"    Testando com {thread_count} thread(s)...")
                     
                     for run in range(1, N_TIMES_RUN + 1):
