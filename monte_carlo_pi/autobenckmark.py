@@ -68,57 +68,62 @@ def run_benchmark():
     
     print(f"Iniciando benchmarks... Resultados serão salvos em '{OUTPUT_CSV}'")
     
-    try:
+    # Write header if file doesn't exist
+    if not os.path.exists(OUTPUT_CSV):
         with open(OUTPUT_CSV, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(['binary_name', 'base_name', 'opt_level', 'simd', 
                            'n_iterations', 'n_threads', 'run_number', 'execution_time_s'])
+    
+    try:
+        for binary_path in sorted(binaries):
+            binary_info = get_binary_info(binary_path)
             
-            for binary_path in sorted(binaries):
-                binary_info = get_binary_info(binary_path)
+            if not os.path.exists(binary_path):
+                continue
                 
-                if not os.path.exists(binary_path):
-                    continue
+            print(f"\n--- Testando Binário: {binary_path} ---")
+            print(f"    Base: {binary_info['base_name']}")
+            print(f"    Otimização: {binary_info['opt_level']}")
+            print(f"    SIMD: {binary_info['simd']}")
+            
+            # Replace linear range with exponential progression
+            n = N_MIN
+            while n <= N_MAX:
+                print(f"  Testando com n = {n:,}...")
+                input_data = f"{n}\n"
+            
+                for thread_count in range(1, MAX_THREADS + 1, STEP_THREADS):
+                    print(f"    Testando com {thread_count} thread(s)...")
                     
-                print(f"\n--- Testando Binário: {binary_path} ---")
-                print(f"    Base: {binary_info['base_name']}")
-                print(f"    Otimização: {binary_info['opt_level']}")
-                print(f"    SIMD: {binary_info['simd']}")
-                
-                # Replace linear range with exponential progression
-                n = N_MIN
-                while n <= N_MAX:
-                    print(f"  Testando com n = {n:,}...")
-                    input_data = f"{n}\n"
-                
-                    for thread_count in range(1, MAX_THREADS + 1, STEP_THREADS):
-                        print(f"    Testando com {thread_count} thread(s)...")
-                        
-                        for run in range(1, N_TIMES_RUN + 1):
-                            try:
-                                env = os.environ.copy()
-                                env['OMP_NUM_THREADS'] = str(thread_count)
-                                
-                                result = subprocess.run(
-                                    [binary_path],
-                                    input=input_data,
-                                    capture_output=True,
-                                    text=True,
-                                    env=env,
-                                    timeout=RUN_TIMEOUT,
-                                    check=False
-                                )
-                                
-                                if result.returncode != 0:
-                                    print(f"    Run {run}/{N_TIMES_RUN}: FALHOU (código de saída {result.returncode})")
-                                    print(f"      Stderr: {result.stderr.strip()}")
-                                    continue
+                    for run in range(1, N_TIMES_RUN + 1):
+                        try:
+                            env = os.environ.copy()
+                            env['OMP_NUM_THREADS'] = str(thread_count)
+                            
+                            result = subprocess.run(
+                                [binary_path],
+                                input=input_data,
+                                capture_output=True,
+                                text=True,
+                                env=env,
+                                timeout=RUN_TIMEOUT,
+                                check=False
+                            )
+                            
+                            if result.returncode != 0:
+                                print(f"    Run {run}/{N_TIMES_RUN}: FALHOU (código de saída {result.returncode})")
+                                print(f"      Stderr: {result.stderr.strip()}")
+                                continue
 
-                                match = time_regex.search(result.stdout)
-                                
-                                if match:
-                                    exec_time = float(match.group(1))
-                                    print(f"      Run {run}/{N_TIMES_RUN}: {exec_time:.6f} s")
+                            match = time_regex.search(result.stdout)
+                            
+                            if match:
+                                exec_time = float(match.group(1))
+                                print(f"      Run {run}/{N_TIMES_RUN}: {exec_time:.6f} s")
+                                # Save result immediately after each run
+                                with open(OUTPUT_CSV, 'a', newline='', encoding='utf-8') as f:
+                                    writer = csv.writer(f)
                                     writer.writerow([
                                         binary_path,
                                         binary_info['base_name'],
@@ -129,16 +134,17 @@ def run_benchmark():
                                         run,
                                         exec_time
                                     ])
-                                else:
-                                    print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (não foi possível extrair o tempo)")
-                                    print(f"        Stdout: {result.stdout.strip()}")
+                                    f.flush()  # Ensure data is written to disk
+                            else:
+                                print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (não foi possível extrair o tempo)")
+                                print(f"        Stdout: {result.stdout.strip()}")
 
-                            except subprocess.TimeoutExpired:
-                                print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (timeout de {RUN_TIMEOUT}s atingido)")
-                            except Exception as e:
-                                print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (exceção: {e})")
+                        except subprocess.TimeoutExpired:
+                            print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (timeout de {RUN_TIMEOUT}s atingido)")
+                        except Exception as e:
+                            print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (exceção: {e})")
 
-                    n *= N_STEP  # Multiply by step instead of adding
+                n *= N_STEP  # Multiply by step instead of adding
 
     except IOError as e:
         print(f"Erro fatal ao escrever o arquivo CSV: {e}")
