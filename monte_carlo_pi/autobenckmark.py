@@ -60,6 +60,8 @@ def run_benchmark():
     e salva os resultados em um arquivo CSV.
     """
     time_regex = re.compile(r"Tempo de execução: (\d+\.\d+) segundos")
+    pi_regex = re.compile(r"Estimativa de PI = (\d+\.\d+)")
+    
     binaries = find_binaries()
     
     if not binaries:
@@ -73,7 +75,8 @@ def run_benchmark():
         with open(OUTPUT_CSV, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(['binary_name', 'base_name', 'opt_level', 'simd', 
-                           'n_iterations', 'n_threads', 'run_number', 'execution_time_s'])
+                           'n_iterations', 'n_threads', 'run_number', 'execution_time_s',
+                           'pi_estimate']) 
     
     try:
         for binary_path in sorted(binaries):
@@ -116,11 +119,14 @@ def run_benchmark():
                                 print(f"      Stderr: {result.stderr.strip()}")
                                 continue
 
-                            match = time_regex.search(result.stdout)
+                            # Procura pelo tempo e pelo PI
+                            time_match = time_regex.search(result.stdout)
+                            pi_match = pi_regex.search(result.stdout)
                             
-                            if match:
-                                exec_time = float(match.group(1))
-                                print(f"      Run {run}/{N_TIMES_RUN}: {exec_time:.6f} s")
+                            if time_match and pi_match:
+                                exec_time = float(time_match.group(1))
+                                pi_value = pi_match.group(1) # Extrai o valor de PI como string
+                                print(f"      Run {run}/{N_TIMES_RUN}: {exec_time:.6f} s, PI = {pi_value}") # <-- Print atualizado
                                 # Save result immediately after each run
                                 with open(OUTPUT_CSV, 'a', newline='', encoding='utf-8') as f:
                                     writer = csv.writer(f)
@@ -132,11 +138,16 @@ def run_benchmark():
                                         n,
                                         thread_count,
                                         run,
-                                        exec_time
+                                        exec_time,
+                                        pi_value # <-- Novo valor salvo
                                     ])
                                     f.flush()  # Ensure data is written to disk
                             else:
-                                print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (não foi possível extrair o tempo)")
+                                # Lógica de falha mais detalhada
+                                if not time_match:
+                                    print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (não foi possível extrair o tempo)")
+                                if not pi_match:
+                                    print(f"      Run {run}/{N_TIMES_RUN}: FALHOU (não foi possível extrair o PI)")
                                 print(f"        Stdout: {result.stdout.strip()}")
 
                         except subprocess.TimeoutExpired:
@@ -152,7 +163,8 @@ def run_benchmark():
                                     n,
                                     thread_count,
                                     run,
-                                    f"TIMEOUT_{RUN_TIMEOUT}s"  # More concise and standard format
+                                    f"TIMEOUT_{RUN_TIMEOUT}s",
+                                    'N/A' # <-- Placeholder para PI em caso de timeout
                                 ])
                                 f.flush()
                         except Exception as e:
@@ -169,4 +181,5 @@ def run_benchmark():
 
 if __name__ == "__main__":
     run_benchmark()
+
 
