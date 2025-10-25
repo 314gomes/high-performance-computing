@@ -90,7 +90,7 @@ int main() {
 
 		
 		// O loop é dividido entre as threads
-		#pragma omp for simd
+		#pragma omp for simd reduction(+:count)
 		for(long int i = 0; i < n; i += XOSHIRO256_UNROLL) {
 			local_count = 0;
 			double x[XOSHIRO256_UNROLL], y[XOSHIRO256_UNROLL];
@@ -104,13 +104,9 @@ int main() {
 			// #pragma omp unroll simd
 			for(int j = 0; j < XOSHIRO256_UNROLL; j++) {
 				// printf("Thread %d: x[%d] = %.9f, y[%d] = %.9f\n", omp_get_thread_num(), j, x[j], j, y[j]);
-				local_count += (x[j] * x[j] + y[j] * y[j] <= 1.0);
+				count += (x[j] * x[j] + y[j] * y[j] <= 1.0);
 			}
 		}
-
-		#pragma omp reduction(+:count)
-		count += local_count;
-
 	}
 	
 	// Finaliza a medição de tempo
