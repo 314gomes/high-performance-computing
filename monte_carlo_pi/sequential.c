@@ -13,10 +13,10 @@ Uso: ./montecarloLivro (o número de pontos será pedido no console)
 #include <time.h> // Para time()
 
 int main() {
-	int count; // Pontos dentro do círculo
+	long int count; // Pontos dentro do círculo
 	long int n; // Número total de pontos
 	long int i; // Contador
-	double pi; // Valor de pi
+	long double pi; // Valor de pi
 	double x, y; // Coordenadas do ponto
 
 	// Variáveis para medir o tempo
@@ -50,8 +50,8 @@ int main() {
 	
 	pi = (double)count / n * 4;
 	
-	printf("\nEstimativa de PI: %.9f\n", pi);
-	printf("Tempo de execução (Wall Clock Time): %f segundos\n", wall_clock_time);
+	printf("\nEstimativa de PI = %.9Lf\n", pi);
+	printf("Tempo de execução: %f segundos\n", wall_clock_time);
 	
 	return 0;
 }
